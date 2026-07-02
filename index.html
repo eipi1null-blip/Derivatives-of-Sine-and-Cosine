@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trigonometric Derivative Gradient Applet</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #3f4148;
+      --muted: #6b6f7a;
+      --panel: #e8edf7;
+      --line: #5f74ad;
+      --axis: #3d3e43;
+      --curve: #5e73b5;
+      --trace: #c7658c;
+      --point: #e22e49;
+      --purple: #6b55ca;
+      --paper: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: #f4f6f9;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 8px;
+    }
+
+    .applet {
+      width: min(1200px, 100%);
+      height: min(800px, calc(100vh - 16px));
+      min-height: 560px;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      border: 2px solid #888d95;
+      background: var(--paper);
+      overflow: hidden;
+    }
+
+    .graph-wrap {
+      position: relative;
+      min-height: 0;
+      background: #fff;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: grab;
+    }
+
+    canvas.dragging {
+      cursor: grabbing;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(190px, 0.8fr) minmax(190px, 0.8fr) minmax(260px, 1fr) minmax(360px, 1.45fr);
+      gap: clamp(16px, 2.4vw, 34px);
+      align-items: center;
+      padding: 26px 40px;
+      border-top: 4px solid var(--line);
+      background: var(--panel);
+    }
+
+    .choice-group {
+      display: grid;
+      gap: 18px;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--ink);
+      font: 700 clamp(1.25rem, 2.4vw, 2rem) Arial, Helvetica, sans-serif;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .check-row input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .box {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 4px solid #777b84;
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .check-row input:checked + .box {
+      border-color: var(--purple);
+      background: var(--purple);
+    }
+
+    .check-row input:checked + .box::before {
+      content: "";
+      width: 28px;
+      height: 16px;
+      border-left: 6px solid #fff;
+      border-bottom: 6px solid #fff;
+      transform: rotate(-45deg) translate(2px, -2px);
+    }
+
+    .formula {
+      display: grid;
+      gap: 18px;
+      justify-items: start;
+      min-width: 0;
+      font: 700 clamp(1.25rem, 2.25vw, 2rem) Georgia, "Times New Roman", serif;
+      font-style: italic;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+
+    .readout {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+      font: 700 clamp(1.05rem, 1.75vw, 1.55rem) Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      line-height: 1.18;
+      overflow-wrap: anywhere;
+    }
+
+    .hint {
+      color: var(--muted);
+      font: 700 clamp(0.9rem, 1.3vw, 1.05rem) Arial, Helvetica, sans-serif;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 900px) {
+      .applet {
+        height: auto;
+        min-height: calc(100vh - 16px);
+        grid-template-rows: minmax(430px, 1fr) auto;
+      }
+
+      .controls {
+        grid-template-columns: 1fr 1fr;
+        gap: 18px 28px;
+        padding: 20px;
+      }
+    }
+
+    @media (max-width: 610px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .formula {
+        white-space: normal;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="applet" aria-label="Trigonometric derivative gradient applet">
+    <section class="graph-wrap" aria-label="Interactive sine and cosine graph">
+      <canvas id="graph"></canvas>
+    </section>
+
+    <section class="controls">
+      <div class="choice-group" role="radiogroup" aria-label="Angle unit">
+        <label class="check-row">
+          <input id="radianMode" type="radio" name="angleMode" value="radian" checked>
+          <span class="box" aria-hidden="true"></span>
+          <span>Radian</span>
+        </label>
+        <label class="check-row">
+          <input id="degreeMode" type="radio" name="angleMode" value="degree">
+          <span class="box" aria-hidden="true"></span>
+          <span>Degree</span>
+        </label>
+      </div>
+
+      <div class="choice-group" role="radiogroup" aria-label="Function">
+        <label class="check-row">
+          <input id="cosMode" type="radio" name="functionMode" value="cos" checked>
+          <span class="box" aria-hidden="true"></span>
+          <span>cosine</span>
+        </label>
+        <label class="check-row">
+          <input id="sinMode" type="radio" name="functionMode" value="sin">
+          <span class="box" aria-hidden="true"></span>
+          <span>sine</span>
+        </label>
+      </div>
+
+      <div class="formula" aria-live="polite">
+        <div id="functionText">f(x) = cos(x)</div>
+        <div id="derivativeText">f&#8242;(x) = ?</div>
+      </div>
+
+      <div class="readout" aria-live="polite">
+        <div id="slopeText">Slope of tangent: m = 0</div>
+        <div class="hint" id="xText">x = 0 radians</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.querySelector("#graph");
+    const ctx = canvas.getContext("2d");
+    const functionText = document.querySelector("#functionText");
+    const derivativeText = document.querySelector("#derivativeText");
+    const slopeText = document.querySelector("#slopeText");
+    const xText = document.querySelector("#xText");
+    const angleInputs = document.querySelectorAll("input[name='angleMode']");
+    const functionInputs = document.querySelectorAll("input[name='functionMode']");
+
+    const state = {
+      width: 0,
+      height: 0,
+      dpr: 1,
+      x: 0,
+      functionMode: "cos",
+      angleMode: "radian",
+      dragging: false,
+      bounds: { xMin: -1, xMax: 5, yMin: -1.5, yMax: 1.5 },
+      traces: {
+        sin: { radian: [], degree: [] },
+        cos: { radian: [], degree: [] }
+      }
+    };
+
+    function cssVar(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function fn(x) {
+      return state.functionMode === "sin" ? Math.sin(x) : Math.cos(x);
+    }
+
+    function derivative(x) {
+      return state.functionMode === "sin" ? Math.cos(x) : -Math.sin(x);
+    }
+
+    function derivativeForSelectedUnit(x) {
+      const unitScale = state.angleMode === "degree" ? Math.PI / 180 : 1;
+      return derivative(x) * unitScale;
+    }
+
+    function toScreen(x, y) {
+      const { xMin, xMax, yMin, yMax } = state.bounds;
+      return {
+        x: ((x - xMin) / (xMax - xMin)) * state.width,
+        y: ((yMax - y) / (yMax - yMin)) * state.height
+      };
+    }
+
+    function fromScreenX(px) {
+      const { xMin, xMax } = state.bounds;
+      return xMin + (px / state.width) * (xMax - xMin);
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      state.dpr = window.devicePixelRatio || 1;
+      state.width = Math.max(320, Math.round(rect.width));
+      state.height = Math.max(360, Math.round(rect.height));
+      canvas.width = Math.round(state.width * state.dpr);
+      canvas.height = Math.round(state.height * state.dpr);
+      ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+      draw();
+    }
+
+    function draw() {
+      if (!state.width || !state.height) return;
+      ctx.clearRect(0, 0, state.width, state.height);
+      drawGuides();
+      drawAxes();
+      drawCurve(fn, cssVar("--curve"), 4);
+      drawTrace();
+      drawTangent();
+      drawMarker();
+      updateText();
+    }
+
+    function drawGuides() {
+      ctx.save();
+      ctx.strokeStyle = "#858585";
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([10, 8]);
+      [-1, 1].forEach(y => {
+        const p = toScreen(0, y);
+        ctx.beginPath();
+        ctx.moveTo(0, p.y);
+        ctx.lineTo(state.width, p.y);
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    function drawAxes() {
+      const origin = toScreen(0, 0);
+      ctx.save();
+      ctx.strokeStyle = cssVar("--axis");
+      ctx.fillStyle = cssVar("--axis");
+      ctx.lineWidth = 3.5;
+
+      ctx.beginPath();
+      ctx.moveTo(0, origin.y);
+      ctx.lineTo(state.width - 16, origin.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(origin.x, state.height);
+      ctx.lineTo(origin.x, 16);
+      ctx.stroke();
+
+      drawArrow(state.width - 16, origin.y, 0);
+      drawArrow(origin.x, 16, -Math.PI / 2);
+
+      ctx.font = "700 26px Georgia, serif";
+      ctx.fillText("x", state.width - 42, origin.y - 12);
+      ctx.fillText("y", origin.x + 16, 42);
+
+      ctx.font = "700 16px Georgia, serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      for (let x = 0; x <= 5; x += 1) {
+        const p = toScreen(x, 0);
+        ctx.beginPath();
+        ctx.moveTo(p.x, origin.y - 6);
+        ctx.lineTo(p.x, origin.y + 6);
+        ctx.stroke();
+        ctx.fillText(String(x), p.x - (x === 0 ? 20 : 0), origin.y + 10);
+      }
+
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      [-1, 1].forEach(y => {
+        const p = toScreen(0, y);
+        ctx.beginPath();
+        ctx.moveTo(origin.x - 6, p.y);
+        ctx.lineTo(origin.x + 6, p.y);
+        ctx.stroke();
+        ctx.fillText(String(y), origin.x - 12, p.y);
+      });
+      ctx.restore();
+    }
+
+    function drawArrow(x, y, angle) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-16, -7);
+      ctx.lineTo(-16, 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawCurve(curveFn, color, lineWidth, dash) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.setLineDash(dash || []);
+      ctx.beginPath();
+      for (let px = 0; px <= state.width; px += 2) {
+        const x = fromScreenX(px);
+        const y = curveFn(x);
+        const p = toScreen(x, y);
+        if (px === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function activeTrace() {
+      return state.traces[state.functionMode][state.angleMode];
+    }
+
+    function clearAllTraces() {
+      Object.values(state.traces).forEach(unitTraces => {
+        unitTraces.radian = [];
+        unitTraces.degree = [];
+      });
+    }
+
+    function addTracePoint() {
+      const trace = activeTrace();
+      const last = trace[trace.length - 1];
+      if (last && Math.abs(last.x - state.x) < 0.012) return;
+      trace.push({ x: state.x, y: derivativeForSelectedUnit(state.x) });
+      trace.sort((a, b) => a.x - b.x);
+    }
+
+    function drawTrace() {
+      const trace = activeTrace();
+      if (!trace.length) return;
+
+      ctx.save();
+      ctx.strokeStyle = cssVar("--trace");
+      ctx.fillStyle = cssVar("--trace");
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      trace.forEach(point => {
+        const p = toScreen(point.x, point.y);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+    }
+
+    function drawTangent() {
+      const x0 = state.x;
+      const y0 = fn(x0);
+      const m = derivative(x0);
+      const span = 0.7;
+      const p1 = toScreen(x0 - span, y0 - m * span);
+      const p2 = toScreen(x0 + span, y0 + m * span);
+      ctx.save();
+      ctx.strokeStyle = "#2f9b8e";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([12, 7]);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawMarker() {
+      const x0 = state.x;
+      const y0 = fn(x0);
+      const point = toScreen(x0, y0);
+      const foot = toScreen(x0, 0);
+      ctx.save();
+      ctx.strokeStyle = "#686a72";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 6]);
+      ctx.beginPath();
+      ctx.moveTo(point.x, point.y);
+      ctx.lineTo(foot.x, foot.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = "#5d3ba0";
+      ctx.strokeStyle = "#24242a";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(foot.x, foot.y, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = cssVar("--point");
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function formatNumber(value) {
+      if (Math.abs(value) < 0.005) return "0";
+      return Number(value.toFixed(2)).toString();
+    }
+
+    function updateText() {
+      const name = state.functionMode === "sin" ? "sin" : "cos";
+      functionText.textContent = `f(x) = ${name}(x)`;
+      derivativeText.textContent = "f'(x) = ?";
+      const m = derivativeForSelectedUnit(state.x);
+      slopeText.textContent = `Slope of tangent: m = ${formatNumber(m)}`;
+      if (state.angleMode === "degree") {
+        xText.textContent = `x = ${formatNumber(state.x * 180 / Math.PI)} degrees`;
+      } else {
+        xText.textContent = `x = ${formatNumber(state.x)} radians`;
+      }
+    }
+
+    function setXFromPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      const px = event.clientX - rect.left;
+      state.x = clamp(fromScreenX(px), state.bounds.xMin, state.bounds.xMax);
+      addTracePoint();
+      draw();
+    }
+
+    canvas.addEventListener("pointerdown", event => {
+      state.dragging = true;
+      canvas.classList.add("dragging");
+      canvas.setPointerCapture(event.pointerId);
+      setXFromPointer(event);
+    });
+
+    canvas.addEventListener("pointermove", event => {
+      if (!state.dragging) return;
+      setXFromPointer(event);
+    });
+
+    canvas.addEventListener("pointerup", event => {
+      state.dragging = false;
+      canvas.classList.remove("dragging");
+      canvas.releasePointerCapture(event.pointerId);
+    });
+
+    canvas.addEventListener("pointercancel", () => {
+      state.dragging = false;
+      canvas.classList.remove("dragging");
+    });
+
+    angleInputs.forEach(input => {
+      input.addEventListener("change", () => {
+        if (input.checked) {
+          state.angleMode = input.value;
+          clearAllTraces();
+          draw();
+        }
+      });
+    });
+
+    functionInputs.forEach(input => {
+      input.addEventListener("change", () => {
+        if (input.checked) {
+          state.functionMode = input.value;
+          clearAllTraces();
+          draw();
+        }
+      });
+    });
+
+    window.addEventListener("resize", resize);
+    resize();
+    draw();
+    window.__trigDerivativeApplet = {
+      traceCounts() {
+        return {
+          sinRadian: state.traces.sin.radian.length,
+          sinDegree: state.traces.sin.degree.length,
+          cosRadian: state.traces.cos.radian.length,
+          cosDegree: state.traces.cos.degree.length
+        };
+      }
+    };
+  </script>
+</body>
+</html>
